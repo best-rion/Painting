@@ -3,11 +3,12 @@
 #include <cstdlib>
 #include <cmath>
 #include <unistd.h>
+#include <time.h>
 
-#define N 30
+#define N 20
 
-sf::Image image;
-
+sf::Texture blackTexture;
+sf::Image transparentImage;
 
 
 unsigned short randomInt(unsigned short _min, unsigned short _max)
@@ -35,62 +36,66 @@ float randomFloat(float _max)
 
 
 
+float r=1;
+
+sf::Vector2u sizeOfImage;
 
 
-float r=2;
-class Dot: public sf::CircleShape{
+class Dot{
 
 public:
 
+    sf::Vector2f position;
     float velocity;
+    float angle;
     sf::Vector2f direction;
-
-    sf::Texture texture;
 
     void initialize()
     {
-        velocity = randomFloat(0.5,1.5);
+        position.x = 400;
+        position.y = 400;
 
-        float angle = randomFloat(2*3.1416);
+        velocity = randomFloat(0.1,0.5);
+
+        angle = randomFloat(2*3.1416);
         direction.x = std::cos(angle);
         direction.y = std::sin(angle);
-
-        setRadius(r);
-        setPosition(400,200);
-
-        texture.loadFromImage( image,sf::IntRect(400,200, 2*r,2*r) );
-        setTexture(&texture);
     }
 
     void update()
     {
-        sf::Vector2f position = getPosition();
 
 
-        std::cout << position.x << "," << position.y << std::endl;
+        angle += randomFloat(-0.3,0.3);
+        direction.x = std::cos(angle);
+        direction.y = std::sin(angle);
 
-        sf::Vector2f testNewPosition;
+        position.x += velocity*direction.x;
+        position.y += velocity*direction.y;
 
-        testNewPosition.x = position.x + velocity*direction.x;
-        testNewPosition.y = position.y + velocity*direction.y;
 
-        if (testNewPosition.x <=0 || testNewPosition.x >=image.getSize().x)
+
+        if (position.x <0)
         {
-            direction.x *= -1;
+            position.x = sizeOfImage.x;
         }
-        if (testNewPosition.y <=0 || testNewPosition.y >=image.getSize().y)
+        if (position.x >sizeOfImage.x)
         {
-            direction.y *= -1;
+            position.x = 0;
         }
 
-        position.x = position.x + velocity*direction.x;
-        position.y = position.y + velocity*direction.y;
+        if (position.y <0)
+        {
+            position.y = sizeOfImage.y;
+        }
+        if (position.y >sizeOfImage.y)
+        {
+            position.y = 0;
+        }
 
-        setPosition(position);
 
 
-        //// Set Texture ////
-        texture.loadFromImage(image,sf::IntRect(position.x,position.y, 2*r,2*r));
+        blackTexture.update(transparentImage, (unsigned int) position.x, (unsigned int) position.y);
     }
 };
 
@@ -100,29 +105,43 @@ public:
 
 int main()
 {
-    srand(0);
+    srand(time(NULL));
 
-    if(!image.loadFromFile("bird.jpg"))
+
+    transparentImage.create((unsigned int) 2*r, (unsigned int) 2*r, sf::Color(0,0,0,0));
+
+
+    sf::Image canvasImage;
+    if(!canvasImage.loadFromFile("bird.jpg"))
         std::cout << "Image Loading Failed" << std::endl;
 
 
-    sf::Vector2u sizeOfImage = image.getSize();
-
-
-    sf::RenderWindow window(sf::VideoMode(sizeOfImage.x, sizeOfImage.y), "SFML works!");
-
+    sizeOfImage = canvasImage.getSize();
 
     sf::Texture canvasTexture;
-    if(!canvasTexture.create(sizeOfImage.x, sizeOfImage.y))
+    if(!canvasTexture.loadFromImage(canvasImage))
         std::cout << "canvasTexture Loading Failed" << std::endl;
 
+    sf::Sprite canvasSprite;
+    canvasSprite.setTexture(canvasTexture);
 
-    sf::Sprite sprite;
-    sprite.setTexture(canvasTexture);
+
+
+
+
+
+    sf::Image blackImage;
+    blackImage.create(sizeOfImage.x, sizeOfImage.y, sf::Color(0,0,0));
+
+    blackTexture.loadFromImage(blackImage);
+
+    sf::Sprite blackSprite;
+    blackSprite.setTexture(blackTexture);
 
     Dot dots[N];  for(unsigned short i=0; i<N; i++){dots[i].initialize();} // Array Constructor :)
 
 
+    sf::RenderWindow window(sf::VideoMode(sizeOfImage.x, sizeOfImage.y), "Painting");
 
     while (window.isOpen())
     {
@@ -131,21 +150,19 @@ int main()
         {
             if (event.type == sf::Event::Closed)
                 window.close();
-
         }
 
-        usleep(4000); // microseconds
+        //usleep(400); // microseconds
 
-        canvasTexture.update(window);
+        window.clear();
 
-        window.clear(sf::Color(0,0,0));
-        window.draw(sprite);
-
+        window.draw(canvasSprite);
         for(unsigned short i=0; i<N; i++)
         {
             dots[i].update();
-            window.draw(dots[i]);
         }
+        window.draw(blackSprite);
+
         window.display();
     }
 
